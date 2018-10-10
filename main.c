@@ -17,12 +17,6 @@
 #define DMA_CH0 (0x01u)
 #define DMA_SOURCE_GPIO (51u)
 #define MAGIC_NUMBER 0X101
-/*
-uint8_t g_data_source[ARRAY_SIZE] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};//defines source data space
-uint8_t g_data_desti[ARRAY_SIZE]; //defines destination data space
-*/
-uint16_t g_data_source[ARRAY_SIZE] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};//defines source data space
-uint16_t g_data_desti[ARRAY_SIZE]; //defines destination data space
 
 /*size of the array*/
 #define SIZEWAVE 101
@@ -36,6 +30,7 @@ uint16 sineWave[SIZEWAVE] = { 2047, 2176, 2304, 2431, 2556, 2680, 2801, 2919,
 		100, 64, 36, 16, 4, 0, 4, 16, 36, 64, 100, 144, 195, 253, 319, 391, 470,
 		555, 646, 742, 844, 950, 1061, 1175, 1293, 1414, 1538, 1663, 1790, 1918,
 		2047 };
+uint16 sineWaveDest [SIZEWAVE];
 uint16 triangularWave[SIZEWAVE] = { 0, 82, 164, 246, 328, 409, 491, 573, 655,
 		737, 819, 901, 983, 1064, 1146, 1228, 1310, 1392, 1474, 1556, 1638,
 		1719, 1801, 1883, 1965, 2047, 2129, 2211, 2293, 2375, 2456, 2538, 2620,
@@ -61,10 +56,18 @@ void DMA0_IRQHandler(void)
 
 	DMA0->INT = DMA_CH0;
 
-	for ( i = 0; i < ARRAY_SIZE; ++i)
+
+	do
 	{
-		printf("%d,",g_data_desti[i]);
-	}
+		/*8 bits en el registro DATL*/
+		DAC0->DAT[0].DATL = ((0xFF & sineWaveDest[i]));
+		/*4 bits en el registro DATH*/
+		DAC0->DAT[0].DATH = ((0xF00 & sineWaveDest[i]) >> 8);
+		printf("%d,", sineWaveDest[i]);
+		i++;
+		if(i >= SIZEWAVE)
+			i = 0;
+	}while(i<SIZEWAVE);
 	printf("\n");
 }
 
@@ -75,6 +78,12 @@ void DMA_clock_gating(void)
 	SIM->SCGC6 |= SIM_SCGC6_DMAMUX_MASK;
 }
 
+void DAC_clock_gating(void) {
+	SIM->SCGC2 |= SIM_SCGC2_DAC0_MASK;
+	DAC0->C0 = FALSE;
+	DAC0->C1 = FALSE;
+	DAC0->C0 = (DAC_C0_DACEN_MASK | DAC_C0_DACRFS_MASK);
+}
 
 void DMA_init(void)
 {
@@ -85,11 +94,11 @@ void DMA_init(void)
 
 	DMA0->ERQ = 0x01;//enables DMA0 request
 
-	DMA0->TCD[0].SADDR = (uint32_t)(&g_data_source[4]);/*defines source data address*/
+	DMA0->TCD[0].SADDR = (uint32_t)(&sineWave[0]);/*defines source data address*/
 	DMA0->TCD[0].SOFF = 2;/*2 Source address signed offset;it is expressed in number of bytes*/
 	/*este uno quiere decir que se mueve en un byte el valor del apuntador, de a donde apunta la siguente transferencia*/
 
-	DMA0->TCD[0].DADDR = (uint32_t)(&g_data_desti[0]);/*defines destination data address*//*a donde quieres mandar los datos*/
+	DMA0->TCD[0].DADDR = (uint32_t)(&sineWaveDest[0]);/*defines destination data address*//*a donde quieres mandar los datos*/
 	DMA0->TCD[0].DOFF = 2;/*escribir el destino*//*destination address signed offset;it is expressed in number of bytes*//*cuantos espacios quiero brincar entre transferencias*/
 
 	/*para poder transferir correctamente, citer y biter, deben tener el mismo valor*/
@@ -97,7 +106,7 @@ void DMA_init(void)
 	DMA0->TCD[0].CITER_ELINKNO = DMA_CITER_ELINKNO_CITER(NUM_STEPS);// NUM_STEPS;/*CITER = 1*//*cuantos paquetes de bytes quiero transferir?*/
 	DMA0->TCD[0].BITER_ELINKNO = DMA_BITER_ELINKNO_BITER(NUM_STEPS);/*BITER = 1*/
 	/*NBytes para 16 bits, tenemos que enviar empaquetado el doble del tamaño*/
-	DMA0->TCD[0].NBYTES_MLNO = 16*NBYTES_16b;/*byte number*/ /*cuantos bytes quiero transferir*/
+	DMA0->TCD[0].NBYTES_MLNO = SIZEWAVE*NBYTES_16b;/*byte number*/ /*cuantos bytes quiero transferir*/
 
 	DMA0->TCD[0].ATTR = 0x101;/*16 bit transfer size, in order to transfer see Kinetis user manual*//*0 es de 8 en 8, para lo demás, ver el manual*/
 
@@ -115,14 +124,15 @@ void DMA_init(void)
 
 int main(void)
 {
-	gpio_pin_control_register_t sw2 = GPIO_MUX1 | GPIO_PE | GPIO_PS | DMA_FALLING_EDGE; /* GPIO configured to trigger the DMA*/
+	GPIO_pin_control_register_t sw2 = GPIO_MUX1 | GPIO_PE | GPIO_PS | DMA_FALLING_EDGE; /* GPIO configured to trigger the DMA*/
 
 	GPIO_clock_gating(GPIO_C);
-	GPIO_pin_control_register(GPIO_C, bit_6, &sw2);
+	GPIO_pin_control_register(GPIO_C, BIT6, &sw2);
 	DMA_clock_gating();
 	DMA_init(); /* Configure the T*/
+	DAC_clock_gating();/*DAC init*/
 	NVIC_enable_interrupt_and_priotity(DMA_CH0_IRQ, PRIORITY_5);
-	NVIC_global_enable_interrupts;
+	EnableInterrupts;
     for (;;) {
 
     }
