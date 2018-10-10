@@ -12,17 +12,17 @@
 
 #include "NVIC.h"
 
-void NVIC_enable_interrupt_and_priotity(interrupt_t interrupt_number, priority_level_t priority)
+void NVIC_enableInterruptAndPriotity(InterruptType interruptNumber, PriorityLevelType priority)
 {
 	/**This functions are part of CMSIS Core functions*/
 	/**It enables the IRQ*/
-	NVIC_EnableIRQ(interrupt_number);
+	NVIC_EnableIRQ(interruptNumber);
 	/**It Sets the priority of the IRQ*/
-	NVIC_SetPriority(interrupt_number, priority);
+	NVIC_SetPriority(interruptNumber, priority);
 }
 
 
-void NVIC_set_basepri_threshold(priority_level_t priority)
+void NVIC_setBASEPRI_threshold(PriorityLevelType priority)
 {
 	/**Sets the threshold level to attend interrupts*/
 	/**A shift is needed to align in a correct manner the data in priority inside BASEPRI register*/
