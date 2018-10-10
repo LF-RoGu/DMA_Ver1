@@ -40,6 +40,7 @@ uint16 triangularWave[SIZEWAVE] = { 0, 82, 164, 246, 328, 409, 491, 573, 655,
 		2538, 2456, 2375, 2293, 2211, 2129, 2047, 1965, 1883, 1801, 1719, 1638,
 		1556, 1474, 1392, 1310, 1228, 1146, 1064, 983, 901, 819, 737, 655, 573,
 		491, 409, 328, 246, 164, 82, 0 };
+uint16 triangularWaveDest [SIZEWAVE];
 uint16 squareWave[SIZEWAVE] = { 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094,
 		4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094,
 		4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094,
@@ -47,28 +48,12 @@ uint16 squareWave[SIZEWAVE] = { 4094, 4094, 4094, 4094, 4094, 4094, 4094, 4094,
 		4094, 4094, 4094, 4094, 4094, 4094, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4094 };
+uint16 squareWaveDest [SIZEWAVE];
 
 
 void DMA0_IRQHandler(void)
 {
-
-	uint8_t i;
-
 	DMA0->INT = DMA_CH0;
-
-
-	do
-	{
-		/*8 bits en el registro DATL*/
-		DAC0->DAT[0].DATL = ((0xFF & sineWaveDest[i]));
-		/*4 bits en el registro DATH*/
-		DAC0->DAT[0].DATH = ((0xF00 & sineWaveDest[i]) >> 8);
-		printf("%d,", sineWaveDest[i]);
-		i++;
-		if(i >= SIZEWAVE)
-			i = 0;
-	}while(i<SIZEWAVE);
-	printf("\n");
 }
 
 
@@ -93,12 +78,13 @@ void DMA_init(void)
 					   DMAMUX_CHCFG_SOURCE(DMA_SOURCE_GPIO);/*source is FTM0 channel 0*/
 
 	DMA0->ERQ = 0x01;//enables DMA0 request
-
-	DMA0->TCD[0].SADDR = (uint32_t)(&sineWave[0]);/*defines source data address*/
+	/*TCD (Transfer Control Descriptor)
+	 * mueve la direccion*/
+	DMA0->TCD[0].SADDR = (uint32_t)(&triangularWave[0]);/*defines source data address*/
 	DMA0->TCD[0].SOFF = 2;/*2 Source address signed offset;it is expressed in number of bytes*/
 	/*este uno quiere decir que se mueve en un byte el valor del apuntador, de a donde apunta la siguente transferencia*/
 
-	DMA0->TCD[0].DADDR = (uint32_t)(&sineWaveDest[0]);/*defines destination data address*//*a donde quieres mandar los datos*/
+	DMA0->TCD[0].DADDR = (uint32_t)(&triangularWaveDest[0]);/*defines destination data address*//*a donde quieres mandar los datos*/
 	DMA0->TCD[0].DOFF = 2;/*escribir el destino*//*destination address signed offset;it is expressed in number of bytes*//*cuantos espacios quiero brincar entre transferencias*/
 
 	/*para poder transferir correctamente, citer y biter, deben tener el mismo valor*/
@@ -122,6 +108,48 @@ void DMA_init(void)
 
 }
 
+void DMA_sine_signal(void)
+{
+	uint16 i;
+	do
+	{
+		/*8 bits en el registro DATL*/
+		DAC0->DAT[0].DATL = ((0xFF & sineWaveDest[i]));
+		/*4 bits en el registro DATH*/
+		DAC0->DAT[0].DATH = ((0xF00 & sineWaveDest[i]) >> 8);
+		i++;
+		if(i>=SIZEWAVE)
+			i = 0;
+	}while(i<SIZEWAVE);
+}
+void DMA_sq_signal(void)
+{
+	uint16 i;
+	do
+	{
+		/*8 bits en el registro DATL*/
+		DAC0->DAT[0].DATL = ((0xFF & squareWaveDest[i]));
+		/*4 bits en el registro DATH*/
+		DAC0->DAT[0].DATH = ((0xF00 & squareWaveDest[i]) >> 8);
+		i++;
+		if(i>=SIZEWAVE)
+			i = 0;
+	}while(i<SIZEWAVE);
+}
+void DMA_tri_signal(void)
+{
+	uint16 i;
+	do
+	{
+		/*8 bits en el registro DATL*/
+		DAC0->DAT[0].DATL = ((0xFF & triangularWaveDest[i]));
+		/*4 bits en el registro DATH*/
+		DAC0->DAT[0].DATH = ((0xF00 & triangularWaveDest[i]) >> 8);
+		i++;
+		if(i>=SIZEWAVE)
+			i = 0;
+	}while(i<SIZEWAVE);
+}
 int main(void)
 {
 	GPIO_pin_control_register_t sw2 = GPIO_MUX1 | GPIO_PE | GPIO_PS | DMA_FALLING_EDGE; /* GPIO configured to trigger the DMA*/
@@ -134,7 +162,7 @@ int main(void)
 	NVIC_enable_interrupt_and_priotity(DMA_CH0_IRQ, PRIORITY_5);
 	EnableInterrupts;
     for (;;) {
-
+    	DMA_tri_signal();
     }
     /* Never leave main */
     return 0;
