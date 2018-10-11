@@ -56,7 +56,6 @@ void DMA0_IRQHandler(void)
 	DMA0->INT = DMA_CH0;
 }
 
-
 void DMA_clock_gating(void)
 {
 	SIM->SCGC7 |= SIM_SCGC7_DMA_MASK;
@@ -72,10 +71,10 @@ void DAC_clock_gating(void) {
 
 void DMA_init(void)
 {
-
 	DMAMUX->CHCFG[0] = 0;
 	DMAMUX->CHCFG[0] = DMAMUX_CHCFG_ENBL_MASK | /*enables DMA MUX channel*/
-					   DMAMUX_CHCFG_SOURCE(DMA_SOURCE_GPIO);/*source is FTM0 channel 0*/
+					   DMAMUX_CHCFG_SOURCE(DMA_SOURCE_GPIO) |
+					   DMAMUX_CHCFG_TRIG_MASK;/*source is FTM0 channel 0*/
 
 	DMA0->ERQ = 0x01;//enables DMA0 request
 	/*TCD (Transfer Control Descriptor)
@@ -104,8 +103,6 @@ void DMA_init(void)
 
 	/*DMA0->TCD[0].CSR = 0x4u;*/
 	DMA0->TCD[0].CSR = DMA_CSR_INTMAJOR_MASK;/*The end-of-major loop interrupt is enabled*/
-
-
 }
 
 void DMA_sine_signal(void)
